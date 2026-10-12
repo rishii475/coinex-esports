@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coinex Esports - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-4 space-y-6">
+
+    <header class="flex justify-between items-center pb-4 border-b border-slate-700">
+        <h1 class="text-xl font-bold text-yellow-400"><i class="fa-solid fa-user-gear mr-2"></i>Admin Dashboard</h1>
+        <span class="text-xs bg-red-600 px-2 py-1 rounded font-bold">COINEX ADMIN</span>
+    </header>
+
+    <!-- SECTION 1: ADD NEW MATCH -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-yellow-400"><i class="fa-solid fa-plus-circle mr-2"></i>Create New Tournament Match</h2>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <input type="text" id="mTitle" placeholder="Match Title (e.g. Bermuda #103)" class="col-span-2 bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="text" id="mCategory" placeholder="Category (e.g. Battle Royale / Clash Squad)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="text" id="mTime" placeholder="Time (e.g. Today @ 09:00 PM)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="number" id="mPrize" placeholder="Prize Pool (₹)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="number" id="mPerkill" placeholder="Per Kill (₹)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="number" id="mFee" placeholder="Entry Fee (₹)" class="col-span-2 bg-slate-900 border border-slate-700 rounded p-2 text-white">
+        </div>
+        <button onclick="createNewMatch()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded text-xs transition">
+            ADD MATCH TO APP
+        </button>
+    </div>
+
+    <!-- SECTION 2: PUBLISH MATCH RESULTS / WINNERS -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-yellow-400"><i class="fa-solid fa-trophy mr-2"></i>Publish Match Winner / Result</h2>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <input type="text" id="resMatchTitle" placeholder="Match Title (e.g. Bermuda #103)" class="col-span-2 bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="text" id="resWinnerIgn" placeholder="Winner IGN" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="text" id="resWinnerUid" placeholder="Winner UID (Required for Auto-Wallet)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="number" id="resKills" placeholder="Total Kills" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="number" id="resWonPrize" placeholder="Prize Won / Total Payout (₹)" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+        </div>
+        <button onclick="publishResult()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded text-xs transition">
+            PUBLISH WINNER & SEND MONEY TO WALLET
+        </button>
+    </div>
+
+    <!-- SECTION 3: MANAGE WITHDRAWAL REQUESTS -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-yellow-400"><i class="fa-solid fa-money-bill-transfer mr-2"></i>Manage Withdrawal Requests</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-700 text-gray-300 uppercase">
+                    <tr>
+                        <th class="p-2">IGN/UID</th>
+                        <th class="p-2">Amount</th>
+                        <th class="p-2">UPI ID</th>
+                        <th class="p-2">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="withdrawalsTable" class="divide-y divide-slate-700 text-gray-300">
+                    <tr><td colspan="4" class="p-2 text-center text-gray-500">Loading withdrawals...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECTION 4: MANAGE & DELETE ANNOUNCED WINNERS -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-red-400"><i class="fa-solid fa-crown mr-2"></i>Manage & Delete Announced Winners</h2>
+        <div id="adminResultsList" class="space-y-2 text-xs">
+            <p class="text-gray-400 text-center">Loading announced results...</p>
+        </div>
+    </div>
+
+    <!-- SECTION 5: MANAGE & CANCEL MATCHES -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-red-400"><i class="fa-solid fa-trash-can mr-2"></i>Manage & Cancel Active Matches</h2>
+        <div id="adminMatchesList" class="space-y-2 text-xs">
+            <p class="text-gray-400 text-center">Loading active matches...</p>
+        </div>
+    </div>
+
+    <!-- SECTION 6: PUBLISH & CLEAR ROOM ID/PASS -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-emerald-400"><i class="fa-solid fa-key mr-2"></i>Publish / Clear Room Credentials</h2>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <input type="text" id="adminRoomId" placeholder="Room ID" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+            <input type="text" id="adminRoomPass" placeholder="Room Pass" class="bg-slate-900 border border-slate-700 rounded p-2 text-white">
+        </div>
+        <div class="flex gap-2">
+            <button onclick="publishRoomDetails()" class="w-1/2 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 rounded text-xs transition">
+                PUBLISH ROOM
+            </button>
+            <button onclick="clearRoomDetails()" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs transition">
+                CLEAR / CANCEL ROOM
+            </button>
+        </div>
+    </div>
+
+    <!-- SECTION 7: VERIFY PAYMENTS (DEPOSITS) -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <h2 class="text-base font-bold text-yellow-400"><i class="fa-solid fa-receipt mr-2"></i>Verify UPI Deposits</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-700 text-gray-300 uppercase">
+                    <tr>
+                        <th class="p-2">IGN/UID</th>
+                        <th class="p-2">Amount</th>
+                        <th class="p-2">UTR Number</th>
+                        <th class="p-2">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="depositsTable" class="divide-y divide-slate-700 text-gray-300">
+                    <tr><td colspan="4" class="p-2 text-center text-gray-500">Loading deposits...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://coinexesports-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        window.onload = function() {
+            loadAdminMatches();
+            loadDepositRequests();
+            loadAdminResults();
+            loadWithdrawalRequests();
+        };
+
+        function createNewMatch() {
+            let title = document.getElementById('mTitle').value.trim();
+            let category = document.getElementById('mCategory').value.trim();
+            let time = document.getElementById('mTime').value.trim();
+            let prize = document.getElementById('mPrize').value.trim();
+            let perkill = document.getElementById('mPerkill').value.trim();
+            let fee = document.getElementById('mFee').value.trim();
+
+            if(!title || !prize || !fee) {
+                alert("Match Title, Prize aur Entry Fee bharein!");
+                return;
+            }
+
+            let matchId = 'match_' + Date.now();
+            db.ref('matches/' + matchId).set({
+                title: title,
+                category: category || "Battle Royale",
+                time: time || "Soon",
+                prize: prize,
+                perkill: perkill || "0",
+                fee: fee
+            }, (err) => {
+                if(!err) {
+                    alert("Match Successfully Added!");
+                    document.getElementById('mTitle').value = "";
+                    document.getElementById('mPrize').value = "";
+                    document.getElementById('mFee').value = "";
+                }
+            });
+        }
+
+        function publishResult() {
+            let matchTitle = document.getElementById('resMatchTitle').value.trim();
+            let ign = document.getElementById('resWinnerIgn').value.trim();
+            let uid = document.getElementById('resWinnerUid').value.trim();
+            let kills = document.getElementById('resKills').value.trim();
+            let prize = Number(document.getElementById('resWonPrize').value.trim());
+
+            if(!matchTitle || !ign || !uid || !prize) {
+                alert("Match Title, Winner IGN, UID aur Prize Won sabhi bharein!");
+                return;
+            }
+
+            let resultId = 'result_' + Date.now();
+            let txId = 'tx_' + Date.now();
+            let nowStr = new Date().toLocaleString();
+
+            db.ref('results/' + resultId).set({
+                matchTitle: matchTitle,
+                ign: ign,
+                uid: uid,
+                kills: kills || "0",
+                prize: prize,
+                publishedAt: nowStr
+            });
+
+            db.ref('users/' + uid + '/wallet').transaction((currentBalance) => {
+                return (currentBalance || 0) + prize;
+            }, (error, committed) => {
+                if(committed) {
+                    db.ref('transactions/' + uid + '/' + txId).set({
+                        type: 'DEPOSIT',
+                        amount: prize,
+                        status: 'Approved',
+                        date: `Won: ${matchTitle} (${nowStr})`,
+                        timestamp: Date.now()
+                    }, (err) => {
+                        if(!err) {
+                            alert(`Success! ₹${prize} winner ${ign} (UID: ${uid}) ke wallet mein add kar diye gaye hain!`);
+                            document.getElementById('resMatchTitle').value = "";
+                            document.getElementById('resWinnerIgn').value = "";
+                            document.getElementById('resWinnerUid').value = "";
+                            document.getElementById('resKills').value = "";
+                            document.getElementById('resWonPrize').value = "";
+                        }
+                    });
+                } else {
+                    alert("Wallet update karne mein error aayi: " + (error ? error.message : "Unknown error"));
+                }
+            });
+        }
+
+        function loadWithdrawalRequests() {
+            db.ref('withdrawals').on('value', (snapshot) => {
+                const tbody = document.getElementById('withdrawalsTable');
+                tbody.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-2 text-center text-gray-500">Koi pending withdrawal request nahi hai.</td></tr>`;
+                    return;
+                }
+                for(let wId in data) {
+                    let w = data[wId];
+                    if(w.status === "Pending") {
+                        let row = `
+                            <tr>
+                                <td class="p-2"><b>${w.ign}</b><br><span class="text-[10px] text-gray-400">${w.uid}</span></td>
+                                <td class="p-2 text-yellow-400 font-bold">₹${w.amount}</td>
+                                <td class="p-2 font-mono text-emerald-400 select-all">${w.upiId}</td>
+                                <td class="p-2">
+                                    <button onclick="approveWithdrawal('${wId}', '${w.uid}', '${w.txId}', '${w.ign}', ${w.amount})" class="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold px-2 py-1 rounded text-[10px]">
+                                        MARK PAID
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    }
+                }
+            });
+        }
+
+        function approveWithdrawal(wId, uid, txId, ign, amt) {
+            if(confirm(`Kya aapne ${ign} ko ₹${amt} transfer kar diye hain?`)) {
+                db.ref('withdrawals/' + wId).update({ status: "Paid" });
+                if(txId && uid) {
+                    db.ref('transactions/' + uid + '/' + txId).update({ status: "Paid" });
+                }
+                alert("Withdrawal marked as PAID!");
+            }
+        }
+
+        function loadAdminResults() {
+            db.ref('results').on('value', (snapshot) => {
+                const container = document.getElementById('adminResultsList');
+                container.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) {
+                    container.innerHTML = `<p class="text-gray-400 text-center">Koi winner announcement publish nahi hai.</p>`;
+                    return;
+                }
+                for(let resultId in data) {
+                    let r = data[resultId];
+                    let card = `
+                        <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center">
+                            <div>
+                                <span class="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-bold">Won ₹${r.prize}</span>
+                                <h3 class="font-bold text-sm text-white mt-1">${r.ign} <span class="text-[10px] text-gray-400">(${r.uid})</span></h3>
+                                <p class="text-[11px] text-gray-400">${r.matchTitle} | Kills: ${r.kills}</p>
+                            </div>
+                            <button onclick="deleteWinnerAnnouncement('${resultId}', '${r.ign}')" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded text-xs transition">
+                                <i class="fa-solid fa-trash mr-1"></i> DELETE
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                }
+            });
+        }
+
+        function deleteWinnerAnnouncement(resultId, winnerIgn) {
+            if(confirm(`Kya aap "${winnerIgn}" ki winner announcement ko delete karna chahte hain?`)) {
+                db.ref('results/' + resultId).remove((err) => {
+                    if(!err) {
+                        alert("Winner Announcement delete ho gayi hai!");
+                    } else {
+                        alert("Error: " + err.message);
+                    }
+                });
+            }
+        }
+
+        function loadAdminMatches() {
+            db.ref('matches').on('value', (snapshot) => {
+                const container = document.getElementById('adminMatchesList');
+                container.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) {
+                    container.innerHTML = `<p class="text-gray-400 text-center">Abhi koi active match nahi hai.</p>`;
+                    return;
+                }
+                for(let matchId in data) {
+                    let m = data[matchId];
+                    let card = `
+                        <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center">
+                            <div>
+                                <span class="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] font-bold">${m.category || 'BR'}</span>
+                                <h3 class="font-bold text-sm text-white mt-1">${m.title}</h3>
+                                <p class="text-[11px] text-gray-400">Fee: ₹${m.fee} | Prize: ₹${m.prize} | Time: ${m.time}</p>
+                            </div>
+                            <button onclick="cancelMatch('${matchId}', '${m.title}')" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded text-xs transition">
+                                <i class="fa-solid fa-trash mr-1"></i> CANCEL
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                }
+            });
+        }
+
+        function cancelMatch(matchId, matchTitle) {
+            if(confirm(`Kya aap sach mein "${matchTitle}" match ko cancel/delete karna chahte hain?`)) {
+                db.ref('matches/' + matchId).remove((error) => {
+                    if(error) {
+                        alert("Match delete karne me error: " + error.message);
+                    } else {
+                        alert(`Match "${matchTitle}" successfully cancel kar diya gaya hai!`);
+                    }
+                });
+            }
+        }
+
+        function publishRoomDetails() {
+            let roomId = document.getElementById('adminRoomId').value.trim();
+            let roomPass = document.getElementById('adminRoomPass').value.trim();
+
+            if(!roomId || !roomPass) {
+                alert("Room ID aur Pass dono dalein!");
+                return;
+            }
+
+            db.ref('currentRoomDetails').set({
+                roomId: roomId,
+                roomPass: roomPass
+            }, (err) => {
+                if(!err) alert("Room Credentials Published!");
+            });
+        }
+
+        function clearRoomDetails() {
+            if(confirm("Kya aap Room ID & Pass ko clear/cancel karna chahte hain?")) {
+                db.ref('currentRoomDetails').remove((err) => {
+                    if(!err) {
+                        document.getElementById('adminRoomId').value = "";
+                        document.getElementById('adminRoomPass').value = "";
+                        alert("Room credentials successfully cleared/cancelled!");
+                    }
+                });
+            }
+        }
+
+        function loadDepositRequests() {
+            db.ref('deposits').on('value', (snapshot) => {
+                const tbody = document.getElementById('depositsTable');
+                tbody.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-2 text-center text-gray-500">Koi pending deposit request nahi hai.</td></tr>`;
+                    return;
+                }
+                for(let utr in data) {
+                    let d = data[utr];
+                    if(d.status === "Pending") {
+                        let row = `
+                            <tr>
+                                <td class="p-2"><b>${d.ign}</b><br><span class="text-[10px] text-gray-400">${d.uid}</span></td>
+                                <td class="p-2 text-emerald-400 font-bold">₹${d.amount}</td>
+                                <td class="p-2 font-mono text-yellow-400 select-all">${d.utr}</td>
+                                <td class="p-2">
+                                    <button onclick="approveDeposit('${d.uid}', ${d.amount}, '${d.utr}', '${d.txId}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-2 py-1 rounded text-[10px]">
+                                        APPROVE
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    }
+                }
+            });
+        }
+
+        function approveDeposit(uid, amount, utr, txId) {
+            db.ref('users/' + uid + '/wallet').transaction((currentBalance) => {
+                return (currentBalance || 0) + Number(amount);
+            }, (error, committed) => {
+                if(committed) {
+                    db.ref('deposits/' + utr).update({ status: "Approved" });
+                    if(txId && uid) {
+                        db.ref('transactions/' + uid + '/' + txId).update({ status: "Approved" });
+                    }
+                    alert("₹" + amount + " user ke wallet me add kar diye gaye hain!");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
